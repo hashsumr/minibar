@@ -201,8 +201,8 @@ minibar_complete(minibar_t *bar) {
 
 	if(!_dumb && _rendered > 0) {
 		fprintf(_outdev, "\r\x1b[%dA", _rendered);
-		_rendered = 0;
 	}
+	_rendered = 0;
 	minibar_plot1(bar);
 
 	/** must be in the inuse list **/
@@ -285,7 +285,16 @@ minibar_plot1(minibar_t *bar) {
 #define W_BARMAX	64	/* exclude [ and ] */
 	/* name + [ bar ] + 8-byte for progress ' OOO.O%\n' */
 	int w_name, w_bar;
-	if(!_dumb && _width < 3) {
+	if(_dumb) {
+		double progress = bar->progress;
+		if(progress < 0.0)   progress = 0.0;
+		if(progress > 100.0) progress = 100.0;
+		fprintf(_outdev, "\r");
+		bar->nplots = _spinner(_outdev, bar->nplots);
+		fprintf(_outdev, " %6.2f%%", bar->progress);
+		return;
+	}
+	if(_width < 3) {
 		/* no output */
 		return;
 	}
@@ -296,18 +305,12 @@ minibar_plot1(minibar_t *bar) {
 		w_name = _width - W_BARMAX - W_SUFFIX - 1 /* [ */;
 	}
 	if(_width < W_MINIMAL) {
-		if(_dumb)
-			fprintf(_outdev, "\r");
-		else
-			fprintf(_outdev, "\r\x1b[2K");
+		fprintf(_outdev, "\r\x1b[2K");
 		bar->nplots = _spinner(_outdev, bar->nplots);
 		fprintf(_outdev, " %*.*s\n", -(_width-3), _width-3, bar->title);
 		return;
 	}
-	if(_dumb)
-		fprintf(_outdev, "\r");
-	else
-		fprintf(_outdev, "\r\x1b[2K");
+	fprintf(_outdev, "\r\x1b[2K");
 	bar->nplots = _spinner(_outdev, bar->nplots);
 	fprintf(_outdev, " %*.*s |", -(w_name-3), w_name-3, bar->title);
 	_barplot(_outdev, w_bar, bar->progress);
@@ -323,7 +326,10 @@ minibar_refresh() {
 	minibar_t *curr;
 	if(_dumb) {
 		fprintf(_outdev, "\r");
-		_spinner(_outdev, _nplot++);
+		if(_inuse_head != NULL) {
+			minibar_plot1(_inuse_head);
+			fflush(_outdev);
+		}
 		goto quit;
 	}
 	if(_width < 3) return;
