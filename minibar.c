@@ -7,6 +7,7 @@
 #include <math.h>
 #include <locale.h>
 #include <langinfo.h>
+#include <pthread.h>
 #include <sys/ioctl.h>
 
 #include "minibar.h"
@@ -28,6 +29,8 @@ static minibar_t *_bars;
 
 static minibar_spin_t _spinner = minibar_spinA;
 static minibar_bar_t  _barplot = minibar_barA;
+
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void
 handle_winch(int s) {
@@ -168,6 +171,8 @@ minibar_get(const char *title) {
 	if(_bars == NULL)       return NULL;
 	if(_avail_head == NULL) return NULL;
 
+	pthread_mutex_lock(&mutex);
+
 	curr = _avail_head;
 
 	/* remove curr from avail list */
@@ -184,6 +189,8 @@ minibar_get(const char *title) {
 		_inuse_tail = curr;
 	}
 	_nrows++;
+
+	pthread_mutex_unlock(&mutex);
 
 	curr->nplots = 0;
 	curr->progress = 0.0;
@@ -204,6 +211,8 @@ minibar_setvalue(minibar_t *bar, double progress) {
 void
 minibar_complete(minibar_t *bar) {
 	if(bar == NULL) return;
+
+	pthread_mutex_lock(&mutex);
 
 	if(!_dumb && _rendered > 0) {
 		fprintf(_outdev, "\r\x1b[%dA", _rendered);
@@ -228,6 +237,9 @@ minibar_complete(minibar_t *bar) {
 	_avail_head = bar;
 
 	_nrows--;
+
+	pthread_mutex_unlock(&mutex);
+
 	minibar_refresh();
 }
 
@@ -339,6 +351,9 @@ minibar_refresh() {
 		goto quit;
 	}
 	if(_width < 3) return;
+
+	pthread_mutex_lock(&mutex);
+
 	if(_rendered > 0)
 		fprintf(_outdev, "\x1b[%dA\r", _rendered);
 	_rendered = 0;
@@ -346,6 +361,9 @@ minibar_refresh() {
 		minibar_plot1(curr);
 		_rendered++;
 	}
+
+	pthread_mutex_unlock(&mutex);
+
 quit:
 	fflush(_outdev);
 }

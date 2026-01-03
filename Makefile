@@ -3,7 +3,7 @@ AR	= ar
 CC	= gcc
 
 CFLAGS	= -Wall -g
-LDFLAGS	= -L. -lminibar -lm
+LDFLAGS	= -L. -lminibar -lm -pthread
 
 PROGS	= libminibar.a testbar1 testbar
 
