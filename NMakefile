@@ -1,0 +1,26 @@
+CC      = cl
+AR      = lib
+CFLAGS  = /nologo /utf-8 /W4 /Zi /MD
+LDFLAGS = libminibar.lib
+
+PROGS   = testbar1.exe testbar.exe
+OBJS    = minibar.obj testbar1.obj testbar.obj
+
+all: libminibar.lib $(PROGS)
+
+%.obj: %.c minibar.h
+	$(CC) $(CFLAGS) /c $<
+
+libminibar.lib: minibar.obj minibar.h
+	$(AR) /nologo /OUT:$@ minibar.obj
+
+testbar1.exe: testbar1.obj libminibar.lib
+	$(CC) $(CFLAGS) /Fe:$@ testbar1.obj $(LDFLAGS)
+
+testbar.exe: testbar.obj libminibar.lib
+	$(CC) $(CFLAGS) /Fe:$@ testbar.obj $(LDFLAGS)
+
+clean:
+	del /Q *.obj *.exe *.lib *.pdb *.ilk
+
+# debugging: devenv /debugexe main.exe

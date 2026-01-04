@@ -2,13 +2,17 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <signal.h>
 #include <math.h>
 #include <locale.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#include <signal.h>
 #include <langinfo.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
+#endif
 
 #include "minibar.h"
 
@@ -31,14 +35,62 @@ static minibar_t *_bars;
 static minibar_spin_t _spinner = minibar_spinA;
 static minibar_bar_t  _barplot = minibar_barA;
 
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+#ifdef _WIN32	/* pthread_mutex emulation */
+typedef struct ptherad_mutex_s {
+	CRITICAL_SECTION cs;
+}	pthread_mutex_t;
+
+static int
+pthread_mutex_init(pthread_mutex_t *mutex, void *attr) {
+	InitializeCriticalSection(&mutex->cs);
+	return 0; // always succeeds
+}
+
+static int
+pthread_mutex_lock(pthread_mutex_t *mutex) {
+	EnterCriticalSection(&mutex->cs);
+	return 0;
+}
+
+static int
+pthread_mutex_unlock(pthread_mutex_t *mutex) {
+	LeaveCriticalSection(&mutex->cs);
+	return 0;
+}
+
+static int
+pthread_mutex_destroy(pthread_mutex_t *mutex) {
+	DeleteCriticalSection(&mutex->cs);
+	return 0;
+}
+#endif
+
+static pthread_mutex_t mutex;
+
+static int
+get_terminal_width() {
+#ifdef _WIN32
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	HANDLE hOut = GetStdHandle(STD_ERROR_HANDLE);
+	if (hOut == INVALID_HANDLE_VALUE)
+		return -1;
+	if (!GetConsoleScreenBufferInfo(hOut, &csbi))
+		return -1;
+	return csbi.srWindow.Right - csbi.srWindow.Left + 1;
+#else
+	struct winsize ws;
+	if(ioctl(fileno(_outdev), TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0)
+		return ws.ws_col;
+	return -1;
+#endif
+}
 
 static void
 handle_winch(int s) {
-	struct winsize ws;
+	int w;
 	if(_outdev == NULL) return;
-	if(ioctl(fileno(_outdev), TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) {
-		_width = ws.ws_col;
+	if((w = get_terminal_width()) > 0) {
+		_width = w;
 		minibar_refresh();
 	}
 }
@@ -64,13 +116,20 @@ minibar_alloc(int maxrow) {
 
 int
 support_unicode() {
+#ifdef _WIN32
+	return 1;
+#else
 	const char *codeset = nl_langinfo(CODESET);
 	if(codeset == NULL) return 0;
-    return strcmp(codeset, "UTF-8") == 0;
+	return strcmp(codeset, "UTF-8") == 0;
+#endif
 }
 
 int
 support_ansi(FILE *dev) {
+#ifdef _WIN32
+	return 1;
+#else
 	const char *term = getenv("TERM");
 	if(!isatty(fileno(dev))) return 0;
 	if(term == NULL)         return 0;
@@ -86,12 +145,17 @@ support_ansi(FILE *dev) {
 		return 1;
 	}
 	return 0;
+#endif
 }
 
 int
 minibar_open(FILE *dev, int maxrow) {
 	if(_initialized) {
 		return 0;
+	}
+
+	if(pthread_mutex_init(&mutex, NULL) != 0) {
+		return -1;
 	}
 
 	if(minibar_alloc(maxrow) <= 0) {
@@ -101,19 +165,26 @@ minibar_open(FILE *dev, int maxrow) {
 	_dumb = 0;
 	_nplot = 0;
 	_outdev = dev;
-
+#ifdef _WIN32
+	setlocale(LC_ALL, ".UTF-8");
+	SetConsoleOutputCP(CP_UTF8);
+	SetConsoleCP(CP_UTF8);
+#else
 	setlocale(LC_ALL, "");
+#endif
 	if(support_unicode()) {
 		_spinner = minibar_spinU;
 		_barplot = minibar_barU;
 	}
 
 	if(support_ansi(dev)) {
-		struct winsize ws;
-		if(ioctl(fileno(dev), TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) {
-			setvbuf(dev, NULL, _IOFBF, 0);
+		int w;
+		if((w = get_terminal_width()) > 0) {
+			setvbuf(dev, NULL, _IOFBF, BUFSIZ);
+#ifndef _WIN32	/* does not support window resize on windows */
 			signal(SIGWINCH, handle_winch);
-			_width = ws.ws_col;
+#endif
+			_width = w;
 		}
 	} else {
 		_dumb = 1;
@@ -142,6 +213,8 @@ minibar_close() {
 	} else if(_outdev == stdout) {
 		setvbuf(_outdev, NULL, _IOLBF, 0);
 	}
+	/* destroy thread mutex */
+	pthread_mutex_destroy(&mutex);
 	_initialized = 0;
 }
 
@@ -164,7 +237,7 @@ minibar_println(const char *fmt, ...) {
 	if(_dumb) {
 		fprintf(_outdev, "\r");
 	} else if(_rendered > 0) {
-		fprintf(_outdev, "\r\x1b[%dA2K", _rendered); 
+		fprintf(_outdev, "\r\x1b[%dA2K", _rendered);
 	}
 	va_start(ap, fmt);
 	vfprintf(_outdev, fmt, ap);
@@ -203,7 +276,11 @@ minibar_get(const char *title) {
 
 	curr->nplots = 0;
 	curr->progress = 0.0;
+#ifdef _WIN32
+	strncpy_s(curr->title, MINIBAR_TITLE_MAX, title, MINIBAR_TITLE_MAX);
+#else
 	strncpy(curr->title, title, MINIBAR_TITLE_MAX);
+#endif
 	return curr;
 }
 
@@ -262,13 +339,13 @@ minibar_spinA(FILE *dev, unsigned int n) {
 unsigned int
 minibar_spinU(FILE *dev, unsigned int n) {
 	/* Unicode Braille Patterns */
-	static char spin[][8] = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" };
+	static const char *spin[] = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" };
 	fprintf(dev, "%s", spin[n % 10]);
 	return n+1;
 }
 
 void
-minibar_bar_generic(FILE *dev, int width, double percent, char *ch[], int nch) {
+minibar_bar_generic(FILE *dev, int width, double percent, const char *ch[], int nch) {
 	int i, full, remainder;
 	int level = nch - 1;
 	double total;
@@ -293,15 +370,14 @@ minibar_bar_generic(FILE *dev, int width, double percent, char *ch[], int nch) {
 
 void
 minibar_barA(FILE *dev, int width, double percent) {
-	static char *ch[] = { ".", "#" };
+	static const char *ch[] = { ".", "#" };
 	minibar_bar_generic(dev, width, percent, ch, 2);
 }
 
 void
 minibar_barU(FILE *dev, int width, double percent) {
 	/* Unicode Braille Patterns */
-	//static char *ch[] = { " ", "⡀", "⡄", "⡆", "⡇", "⣇", "⣧", "⣷", "⣿" };
-	static char *ch[] = { "⣀", "⣄", "⣆", "⣇", "⣧", "⣷", "⣿" };
+	static const char *ch[] = { "⣀", "⣄", "⣆", "⣇", "⣧", "⣷", "⣿" };
 	minibar_bar_generic(dev, width, percent, ch, 7);
 }
 

@@ -1,7 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <time.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 #include "minibar.h"
 
 char *
@@ -25,7 +29,11 @@ main(int argc, char *argv[]) {
 	int i, allocated = 0, completed = 0;
 	minibar_t *bar[N_BAR];
 
+#ifdef _WIN32
+	srand(time(0));
+#else
 	srand(time(0) ^ getpid());
+#endif
 
 	if(minibar_open(stderr, N_BAR) < 0) {
 		fprintf(stderr, "init failed.\n");
@@ -66,10 +74,14 @@ main(int argc, char *argv[]) {
 
 		minibar_refresh();
 
-		usleep(100000);
+#ifdef _WIN32
+		Sleep(100);
+#else
+		usleep(100000);  // 100 ms
+#endif
 	}
 
 	minibar_close();
 
-    return 0;
+	return 0;
 }
