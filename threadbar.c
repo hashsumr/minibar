@@ -10,6 +10,10 @@
 #endif
 #include "minibar.h"
 
+#ifdef _WIN32
+#include "pthread_win32.c"
+#endif
+
 /* my secret job format */
 typedef struct job_s {
 	char title[48];
@@ -42,7 +46,11 @@ void *
 visualizer(void *__) {
 	while(running) {
 		minibar_refresh();
+#ifdef _WIN32
+		Sleep(1000);
+#else
 		sleep(1);
+#endif
 	}
 	return NULL;
 }
@@ -105,12 +113,18 @@ main(int argc, char *argv[]) {
 	if(N_WORKERS < 1) N_WORKERS = N_WORKER_DEFAULT;
 	if(N_JOBS < 1) N_JOBS = N_JOB_DEFAULT;
 
+	pthread_mutex_init(&mutex, NULL);
+
 	/* create jobs */
 	if((jobs = (job_t *) malloc(sizeof(job_t) * N_JOBS)) == NULL) {
 		return -1;
 	}
 	for(i = 0; i < N_JOBS; i++) {
+#ifdef _WIN32
+		strncpy_s(jobs[i].title, 48, gen_title(i), 48);
+#else
 		strncpy(jobs[i].title, gen_title(i), 48);
+#endif
 		jobs[i].progress = 0.0;
 	}
 	nextjob = 0;
