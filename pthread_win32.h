@@ -20,9 +20,17 @@ typedef struct {
 	int detached;
 } pthread_t;
 
+#if _WIN32_WINNT >= 0x0600
+#define PTHREAD_MUTEX_INITIALIZER SRWLOCK_INIT
+typedef SRWLOCK pthread_mutex_t;
+#else
 typedef CRITICAL_SECTION   pthread_mutex_t;
+#endif
+typedef SRWLOCK pthread_mutex_t;
+#define PTHREAD_COND_INITIALIZER {0}
 typedef CONDITION_VARIABLE pthread_cond_t;
 typedef SYNCHRONIZATION_BARRIER pthread_barrier_t;
+
 
 /* thread */
 STATIC int pthread_create(pthread_t *thread, void *attr, void *(*start_routine)(void *), void *arg);

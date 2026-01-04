@@ -65,25 +65,41 @@ pthread_join(pthread_t thread, void **retval) {
 STATIC int
 pthread_mutex_init(pthread_mutex_t *mutex, void *attr) {
 	(void)attr;
+#if _WIN32_WINNT >= 0x0600
+	InitializeSRWLock(mutex);
+#else
 	InitializeCriticalSection(mutex);
+#endif
 	return 0;
 }
 
 STATIC int
 pthread_mutex_destroy(pthread_mutex_t *mutex) {
+#if _WIN32_WINNT >= 0x0600
+	/* do nothing */
+#else
 	DeleteCriticalSection(mutex);
+#endif
 	return 0;
 }
 
 STATIC int
 pthread_mutex_lock(pthread_mutex_t *mutex) {
+#if _WIN32_WINNT >= 0x0600
+	AcquireSRWLockExclusive(mutex);
+#else
 	EnterCriticalSection(mutex);
+#endif
 	return 0;
 }
 
 STATIC int
 pthread_mutex_unlock(pthread_mutex_t *mutex) {
+#if _WIN32_WINNT >= 0x0600
+	ReleaseSRWLockExclusive(mutex);
+#else
 	LeaveCriticalSection(mutex);
+#endif
 	return 0;
 }
 
@@ -104,7 +120,11 @@ pthread_cond_destroy(pthread_cond_t *cond) {
 
 STATIC int
 pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex) {
+#if _WIN32_WINNT >= 0x0600
+	SleepConditionVariableSRW(cond, mutex, INFINITE, 0);
+#else
 	SleepConditionVariableCS(cond, mutex, INFINITE);
+#endif
 	return 0;
 }
 

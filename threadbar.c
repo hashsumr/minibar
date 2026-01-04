@@ -25,7 +25,7 @@ static job_t *jobs;
 static int nextjob = 0;
 static int totaljob = 0;
 
-static pthread_mutex_t mutex;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_barrier_t barrier;
 
 char *
@@ -112,8 +112,6 @@ main(int argc, char *argv[]) {
 	if(argc > 2) N_JOBS = strtol(argv[2], NULL, 0);
 	if(N_WORKERS < 1) N_WORKERS = N_WORKER_DEFAULT;
 	if(N_JOBS < 1) N_JOBS = N_JOB_DEFAULT;
-
-	pthread_mutex_init(&mutex, NULL);
 
 	/* create jobs */
 	if((jobs = (job_t *) malloc(sizeof(job_t) * N_JOBS)) == NULL) {
