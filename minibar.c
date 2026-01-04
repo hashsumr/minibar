@@ -86,6 +86,16 @@ get_terminal_width() {
 }
 
 static void
+hide_cursor(int hide) {
+	if(_outdev == NULL) return;
+	if(hide) {
+		fprintf(_outdev, "\x1b[?25l");
+	} else {
+		fprintf(_outdev, "\x1b[?25h");
+	}
+}
+
+static void
 handle_winch(int s) {
 	int w;
 	if(_outdev == NULL) return;
@@ -93,6 +103,12 @@ handle_winch(int s) {
 		_width = w;
 		minibar_refresh();
 	}
+}
+
+static void
+handle_interrupt(int s) {
+	hide_cursor(0);
+	exit(1);
 }
 
 static int
@@ -183,9 +199,13 @@ minibar_open(FILE *dev, int maxrow) {
 			setvbuf(dev, NULL, _IOFBF, BUFSIZ);
 #ifndef _WIN32	/* does not support window resize on windows */
 			signal(SIGWINCH, handle_winch);
+			signal(SIGINT, handle_interrupt);
+			signal(SIGQUIT, handle_interrupt);
+			signal(SIGTERM, handle_interrupt);
 #endif
 			_width = w;
 		}
+		hide_cursor(1);
 	} else {
 		_dumb = 1;
 	}
@@ -198,6 +218,8 @@ void
 minibar_close() {
 	if(_initialized == 0) return;
 	if(_outdev == NULL) return;
+	if(!_dumb)
+		hide_cursor(0);
 	if(_nrows > 0) {
 		if(_dumb) {
 			fprintf(_outdev, "\n\r");
@@ -237,12 +259,12 @@ minibar_println(const char *fmt, ...) {
 	if(_dumb) {
 		fprintf(_outdev, "\r");
 	} else if(_rendered > 0) {
-		fprintf(_outdev, "\r\x1b[%dA2K", _rendered);
+		fprintf(_outdev, "\r\x1b[%dA", _rendered);
 	}
 	va_start(ap, fmt);
 	vfprintf(_outdev, fmt, ap);
 	va_end(ap);
-	fprintf(_outdev, "\n\r");
+	fprintf(_outdev, "\x1b[0K\n\r");
 
 	minibar_refresh();
 }
@@ -410,16 +432,16 @@ minibar_plot1(minibar_t *bar) {
 		w_name = _width - W_BARMAX - W_SUFFIX - 1 /* [ */;
 	}
 	if(_width < W_MINIMAL) {
-		fprintf(_outdev, "\r\x1b[2K");
+		fprintf(_outdev, "\r");
 		bar->nplots = _spinner(_outdev, bar->nplots);
-		fprintf(_outdev, " %*.*s\n", -(_width-3), _width-3, bar->title);
+		fprintf(_outdev, " %*.*s\x1b[0K\n", -(_width-3), _width-3, bar->title);
 		return;
 	}
-	fprintf(_outdev, "\r\x1b[2K");
+	fprintf(_outdev, "\r");
 	bar->nplots = _spinner(_outdev, bar->nplots);
 	fprintf(_outdev, " %*.*s |", -(w_name-3), w_name-3, bar->title);
 	_barplot(_outdev, w_bar, bar->progress);
-	fprintf(_outdev, "|%*.1f%%\n", W_SUFFIX-3,
+	fprintf(_outdev, "|%*.1f%%\x1b[0K\n", W_SUFFIX-3,
 		bar->progress > 100.0 ? 100.0 : bar->progress);
 #undef W_MINIMAL
 #undef W_PERCENT
