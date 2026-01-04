@@ -18,6 +18,10 @@
 
 /* a minimal non-curses progress bar in C */
 
+#ifdef _WIN32
+#include "pthread_win32.c"
+#endif
+
 static int _dumb = 0;
 static unsigned _nplot = 0;
 
@@ -34,36 +38,6 @@ static minibar_t *_bars;
 
 static minibar_spin_t _spinner = minibar_spinA;
 static minibar_bar_t  _barplot = minibar_barA;
-
-#ifdef _WIN32	/* pthread_mutex emulation */
-typedef struct ptherad_mutex_s {
-	CRITICAL_SECTION cs;
-}	pthread_mutex_t;
-
-static int
-pthread_mutex_init(pthread_mutex_t *mutex, void *attr) {
-	InitializeCriticalSection(&mutex->cs);
-	return 0; // always succeeds
-}
-
-static int
-pthread_mutex_lock(pthread_mutex_t *mutex) {
-	EnterCriticalSection(&mutex->cs);
-	return 0;
-}
-
-static int
-pthread_mutex_unlock(pthread_mutex_t *mutex) {
-	LeaveCriticalSection(&mutex->cs);
-	return 0;
-}
-
-static int
-pthread_mutex_destroy(pthread_mutex_t *mutex) {
-	DeleteCriticalSection(&mutex->cs);
-	return 0;
-}
-#endif
 
 static pthread_mutex_t mutex;
 
