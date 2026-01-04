@@ -21,19 +21,31 @@ gen_title(int n) {
 	return output;
 }
 
-#define	N_BAR	(4)
-#define N_JOBS	(10)
+#define N_BAR_DEFAULT	(4)
+#define N_JOB_DEFAULT	(10)
 
 int
 main(int argc, char *argv[]) {
 	int i, allocated = 0, completed = 0;
-	minibar_t *bar[N_BAR];
+	int N_BAR  = N_BAR_DEFAULT;
+	int N_JOBS = N_JOB_DEFAULT;
+	minibar_t **bar;
 
 #ifdef _WIN32
 	srand(time(0));
 #else
 	srand(time(0) ^ getpid());
 #endif
+
+	if(argc > 1) N_BAR  = strtol(argv[1], NULL, 0);
+	if(argc > 2) N_JOBS = strtol(argv[2], NULL, 0);
+	if(N_BAR  < 1) N_BAR  = N_BAR_DEFAULT;
+	if(N_JOBS < 1) N_JOBS = N_JOB_DEFAULT;
+
+	if((bar = (minibar_t **) malloc(sizeof(minibar_t *) * N_BAR)) == NULL) {
+		fprintf(stderr, "malloc failed.\n");
+		return -1;
+	}
 
 	if(minibar_open(stderr, N_BAR) < 0) {
 		fprintf(stderr, "init failed.\n");
