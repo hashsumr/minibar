@@ -1,0 +1,3 @@
+[submodule "pthread_compat_src"]
+	path = pthread_compat_src
+	url = https://github.com/chunying/pthread-compat.git

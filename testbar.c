@@ -8,8 +8,6 @@
 #endif
 #include "minibar.h"
 
-#include "pthread_barrier.c"
-
 char *
 gen_title(int n) {
 	static char cand[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "abcdefghijklmnopqrstuvwxyz" "0123456789";

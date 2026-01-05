@@ -1,0 +1,11 @@
+/pthread_compat
+
+*.o
+*.obj
+*.a
+*.lib
+
+# binaries
+testbar1
+testbar
+threadbar

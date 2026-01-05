@@ -14,7 +14,7 @@
 #include "pthread_win32.c"
 #endif
 
-#include "pthread_barrier.c"
+#include "pthread_compat/pthread_compat.h"
 
 /* my secret job format */
 typedef struct job_s {
