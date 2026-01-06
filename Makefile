@@ -12,7 +12,7 @@ PTHREAD_COMPAT_OBJS	= pthread_compat/pthread_barrier.o pthread_compat/pthread_wi
 all: $(PROGS)
 
 pthread_compat/%.o: pthread_compat/%.c
-	$(CC) -c -o $@ $^ $(CFLAGS)
+	$(CC) -c -o $@ $(CFLAGS) $<
 
 %.o: %.c minibar.h
 	$(CC) -c $(CFLAGS) $<
