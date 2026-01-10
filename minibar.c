@@ -379,17 +379,19 @@ minibar_barU(FILE *dev, int width, double percent) {
 
 void
 minibar_plot1(minibar_t *bar) {
-#define W_MINIMAL	20	/* 10 + 10 + 10 */
-#define W_SUFFIX	9	/* '] OOO.O%\n' */
+#define W_MINIMAL	24	/* 12 + 12 */
+#define W_NONNAME	12	/* spinner + ' OOO.O% [' + '] ' */
 #define W_BARMAX	64	/* exclude [ and ] */
-	/* name + [ bar ] + 8-byte for progress ' OOO.O%\n' */
+	/* spinner + ' 000.0% [' + bar + '] ' + name + '\n' */
 	int w_name, w_bar;
+	double progress;
 	if(bar == NULL) return;
 
+	progress = bar->progress;
+	if(progress < 0.0)   progress = 0.0;
+	if(progress > 100.0) progress = 100.0;
+
 	if(_dumb) {
-		double progress = bar->progress;
-		if(progress < 0.0)   progress = 0.0;
-		if(progress > 100.0) progress = 100.0;
 		fprintf(_outdev, "\r");
 		bar->nplots = _spinner(_outdev, bar->nplots);
 		fprintf(_outdev, " %6.2f%%", bar->progress);
@@ -399,11 +401,11 @@ minibar_plot1(minibar_t *bar) {
 		/* no output */
 		return;
 	}
-	w_name = (_width - W_SUFFIX) * 2 / 3;
-	w_bar = _width - W_SUFFIX - w_name - 1 /* [ */;
+	w_name = (_width - W_NONNAME) * 2 / 3;
+	w_bar = _width - W_NONNAME - w_name - 1 /* \n */;
 	if(w_bar > W_BARMAX) {
 		w_bar = W_BARMAX;
-		w_name = _width - W_BARMAX - W_SUFFIX - 1 /* [ */;
+		w_name = _width - W_BARMAX - W_NONNAME - 1 /* \n */;
 	}
 	if(_width < W_MINIMAL) {
 		fprintf(_outdev, "\r");
@@ -413,10 +415,9 @@ minibar_plot1(minibar_t *bar) {
 	}
 	fprintf(_outdev, "\r");
 	bar->nplots = _spinner(_outdev, bar->nplots);
-	fprintf(_outdev, " %*.*s |", -(w_name-3), w_name-3, bar->title);
+	fprintf(_outdev, " %5.1f%% |", progress);
 	_barplot(_outdev, w_bar, bar->progress);
-	fprintf(_outdev, "|%*.1f%%\x1b[0K\n", W_SUFFIX-3,
-		bar->progress > 100.0 ? 100.0 : bar->progress);
+	fprintf(_outdev, "| %*.*s\x1b[0K\n", -(w_name-3), w_name-3, bar->title);
 #undef W_MINIMAL
 #undef W_PERCENT
 #undef W_BARMAX
