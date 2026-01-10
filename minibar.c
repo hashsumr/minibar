@@ -410,14 +410,14 @@ minibar_plot1(minibar_t *bar) {
 	if(_width < W_MINIMAL) {
 		fprintf(_outdev, "\r");
 		bar->nplots = _spinner(_outdev, bar->nplots);
-		fprintf(_outdev, " %*.*s\x1b[0K\n", -(_width-3), _width-3, bar->title);
+		fprintf(_outdev, " %.*s\x1b[0K\n", _width-3, bar->title);
 		return;
 	}
 	fprintf(_outdev, "\r");
 	bar->nplots = _spinner(_outdev, bar->nplots);
 	fprintf(_outdev, " %5.1f%% |", progress);
 	_barplot(_outdev, w_bar, bar->progress);
-	fprintf(_outdev, "| %*.*s\x1b[0K\n", -(w_name-3), w_name-3, bar->title);
+	fprintf(_outdev, "| %.*s\x1b[0K\n", w_name-3, bar->title);
 #undef W_MINIMAL
 #undef W_PERCENT
 #undef W_BARMAX
