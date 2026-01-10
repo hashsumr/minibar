@@ -6,12 +6,18 @@ LDFLAGS =
 PROGS   = libminibar.lib testbar1.exe testbar.exe threadbar.exe
 OBJS    = minibar.obj testbar1.obj testbar.obj threadbar.obj
 
-PTHREAD_COMPAT_OBJS = pthread_compat/pthread_barrier.obj pthread_compat/pthread_win32.obj
+PTHREAD_COMPAT_OBJS = pthread_barrier.obj pthread_win32.obj
 
 all: $(PROGS)
 
+pthread_barrier.obj: pthread_compat/pthread_barrier.c
+	$(CC) $(CFLAGS) /c /Fo$@ $**
+
+pthread_win32.obj: pthread_compat/pthread_win32.c
+	$(CC) $(CFLAGS) /c /Fo$@ $**
+
 .c.obj:
-	$(CC) $(CFLAGS) /c /Fo$@ $<
+	$(CC) $(CFLAGS) /c /Fo$@ $**
 
 libminibar.lib: minibar.obj minibar.h
 	$(AR) /nologo /OUT:$@ minibar.obj
@@ -26,6 +32,6 @@ threadbar.exe: threadbar.obj minibar.obj $(PTHREAD_COMPAT_OBJS)
 	$(CC) $(CFLAGS) /Fe:$@ threadbar.obj minibar.obj $(PTHREAD_COMPAT_OBJS) $(LDFLAGS)
 
 clean:
-	-del /Q *.obj *.exe *.lib *.pdb *.ilk pthread_compat\*.obj $(PROGS)
+	-del /Q *.obj *.exe *.lib *.pdb *.ilk $(PROGS)
 
 # debugging: devenv /debugexe main.exe

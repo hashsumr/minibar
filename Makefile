@@ -7,11 +7,11 @@ LDFLAGS	= -lm -pthread
 
 PROGS	= libminibar.a testbar1 testbar threadbar
 
-PTHREAD_COMPAT_OBJS	= pthread_compat/pthread_barrier.o pthread_compat/pthread_win32.o
+PTHREAD_COMPAT_OBJS	= pthread_barrier.o pthread_win32.o
 
 all: $(PROGS)
 
-pthread_compat/%.o: pthread_compat/%.c
+pthread_%.o: pthread_compat/pthread_%.c
 	$(CC) -c -o $@ $(CFLAGS) $<
 
 %.o: %.c minibar.h
@@ -30,4 +30,4 @@ threadbar: threadbar.o minibar.o $(PTHREAD_COMPAT_OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -f *.o pthread_compat/*.o $(PROGS)
+	rm -f *.o $(PROGS)
