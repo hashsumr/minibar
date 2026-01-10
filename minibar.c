@@ -381,7 +381,7 @@ void
 minibar_plot1(minibar_t *bar) {
 #define W_MINIMAL	24	/* 12 + 12 */
 #define W_NONNAME	12	/* spinner + ' OOO.O% [' + '] ' */
-#define W_BARMAX	64	/* exclude [ and ] */
+#define W_BARMAX	18	/* exclude [ and ] */
 	/* spinner + ' 000.0% [' + bar + '] ' + name + '\n' */
 	int w_name, w_bar;
 	double progress;
