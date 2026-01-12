@@ -273,7 +273,7 @@ minibar_get(const char *title) {
 	curr->nplots = 0;
 	curr->progress = 0.0;
 #ifdef _WIN32
-	strncpy_s(curr->title, MINIBAR_TITLE_MAX, title, MINIBAR_TITLE_MAX);
+	strncpy_s(curr->title, MINIBAR_TITLE_MAX, title, _TRUNCATE);
 #else
 	strncpy(curr->title, title, MINIBAR_TITLE_MAX);
 #endif

@@ -117,7 +117,7 @@ main(int argc, char *argv[]) {
 	}
 	for(i = 0; i < N_JOBS; i++) {
 #ifdef _WIN32
-		strncpy_s(jobs[i].title, 48, gen_title(i), 48);
+		strncpy_s(jobs[i].title, 48, gen_title(i), _TRUNCATE);
 #else
 		strncpy(jobs[i].title, gen_title(i), 48);
 #endif
